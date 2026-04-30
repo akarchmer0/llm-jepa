@@ -701,6 +701,9 @@ class RepresentationTrainer(Trainer):
         self.random_span_layer = kwargs.pop('random_span_layer', -1)
         self.curvature_sign = kwargs.pop('curvature_sign', False)
         self.avg_encoding = kwargs.pop('avg_encoding', False)
+        self.trajectory_reg = kwargs.pop('trajectory_reg', False)
+        self.lbd1 = kwargs.pop('lbd1', 0.01)
+        self.lbd2 = kwargs.pop('lbd2', 0.01)
         if self.avg_encoding:
             assert not self.additive_mask, f"additive_mask cannot be set if avg_encoding is set."
             assert self.linear is None, f"linear cannot be set if avg_encoding is set."
@@ -1087,6 +1090,34 @@ class RepresentationTrainer(Trainer):
         
         return before, patch, after
 
+    def get_velocity_loss(self, hidden_states, start, end_exclusive):
+        """Mean squared deviation of velocity from mean velocity over a token span.
+
+        For a perfectly linear constant-speed trajectory, this is 0.
+        Requires at least 2 tokens (1 velocity vector).
+        """
+        length = end_exclusive - start
+        if length >= 2:
+            span = hidden_states[start:end_exclusive]            # (L, D)
+            velocities = span[1:] - span[:-1]                    # (L-1, D)
+            mean_velocity = velocities.mean(dim=0, keepdim=True) # (1, D)
+            deviations = velocities - mean_velocity               # (L-1, D)
+            return torch.sum(deviations ** 2), deviations.shape[0]
+        return torch.tensor(0.0, device=hidden_states.device), 0
+
+    def get_acceleration_loss(self, hidden_states, start, end_exclusive):
+        """Mean squared acceleration (second finite difference) over a token span.
+
+        For a constant-velocity trajectory, this is 0.
+        Requires at least 3 tokens (1 acceleration vector).
+        """
+        length = end_exclusive - start
+        if length >= 3:
+            span = hidden_states[start:end_exclusive]        # (L, D)
+            accel = span[2:] - 2 * span[1:-1] + span[:-2]   # (L-2, D)
+            return torch.sum(accel ** 2), accel.shape[0]
+        return torch.tensor(0.0, device=hidden_states.device), 0
+
     def get_weights(self, full_length: int, patch_length: int):
         rest_length = full_length - patch_length
         if self.length_adjustment is None:
@@ -1278,7 +1309,37 @@ class RepresentationTrainer(Trainer):
         else:
             jepa_loss = 0.0
 
-        total_loss = self.gamma * lm_loss + self.get_lbd() * jepa_loss
+        # First-order (velocity consistency) + second-order (acceleration) trajectory regularization
+        first_order_loss = torch.tensor(0.0, device=hidden_states.device)
+        second_order_loss = torch.tensor(0.0, device=hidden_states.device)
+        if self.trajectory_reg and self.linear is not None:
+            total_vel = torch.tensor(0.0, device=hidden_states.device)
+            total_vel_count = 0
+            total_accel = torch.tensor(0.0, device=hidden_states.device)
+            total_accel_count = 0
+            for i in range(hidden_states.shape[0]):
+                user_start = self.user_start_end[i, 0] + 1
+                user_end = self.user_start_end[i, 1] + 1
+                asst_start = self.assistant_start_end[i, 0] + 1
+                asst_end = self.assistant_start_end[i, 1] + 1
+
+                u_vel, u_vc = self.get_velocity_loss(hidden_states[i], user_start, user_end)
+                a_vel, a_vc = self.get_velocity_loss(hidden_states[i], asst_start, asst_end)
+                total_vel = total_vel + u_vel + a_vel
+                total_vel_count += u_vc + a_vc
+
+                u_acc, u_ac = self.get_acceleration_loss(hidden_states[i], user_start, user_end)
+                a_acc, a_ac = self.get_acceleration_loss(hidden_states[i], asst_start, asst_end)
+                total_accel = total_accel + u_acc + a_acc
+                total_accel_count += u_ac + a_ac
+
+            if total_vel_count > 0:
+                first_order_loss = total_vel / total_vel_count
+            if total_accel_count > 0:
+                second_order_loss = total_accel / total_accel_count
+
+        total_loss = (self.gamma * lm_loss + self.get_lbd() * jepa_loss
+                      + self.lbd1 * first_order_loss + self.lbd2 * second_order_loss)
 
         if self.debug == 2 and torch.cuda.current_device() == 0:
             print(lm_loss, self.get_lbd(), torch.mean(cosine_similarity))
@@ -1288,8 +1349,10 @@ class RepresentationTrainer(Trainer):
 
         if self.debug == 5 and torch.cuda.current_device() == 0:
             if (self.state.global_step % 10) == 0:
-                print(f"llm_loss_10: {lm_loss.float()}, jepa_loss: {jepa_loss.float()}")
-            print(f"llm_loss: {lm_loss.float()}, jepa_loss: {jepa_loss.float()}")
+                print(f"llm_loss_10: {lm_loss.float()}, jepa_loss: {jepa_loss.float()}, "
+                      f"vel_loss: {first_order_loss.float()}, accel_loss: {second_order_loss.float()}")
+            print(f"llm_loss: {lm_loss.float()}, jepa_loss: {jepa_loss.float()}, "
+                  f"vel_loss: {first_order_loss.float()}, accel_loss: {second_order_loss.float()}")
 
         return (total_loss, main_outputs) if return_outputs else total_loss
 
@@ -1381,6 +1444,12 @@ def main():
     parser.add_argument("--avg_encoding", action="store_true", help="When set to True, use average encoding.")
     parser.add_argument("--use_default_data_collator", action="store_true", help="When set, Use `default_data_collator`.")
     parser.add_argument("--unmask_assistant_special_tokens", action="store_true", help="When set, unmask assistant special tokens.")
+    parser.add_argument("--trajectory_reg", action="store_true",
+        help="When set, add first-order (velocity) and second-order (acceleration) trajectory regularization to loss.")
+    parser.add_argument("--lbd1", type=float, default=0.01,
+        help="Lambda for first-order velocity consistency loss (used with --trajectory_reg).")
+    parser.add_argument("--lbd2", type=float, default=0.01,
+        help="Lambda for second-order acceleration loss (used with --trajectory_reg).")
 
 
     args = parser.parse_args()
@@ -1634,6 +1703,9 @@ def main():
             random_span_layer=args.random_span_layer,
             curvature_sign=args.curvature_sign,
             avg_encoding=args.avg_encoding,
+            trajectory_reg=args.trajectory_reg,
+            lbd1=args.lbd1,
+            lbd2=args.lbd2,
         )
     
     if torch.cuda.current_device() == 0 and args.lora:
