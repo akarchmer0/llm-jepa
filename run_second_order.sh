@@ -26,11 +26,11 @@ run_regular() {
 
   echo "Success Rate: regular ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
-    --train_file ${dataset}_train.jsonl \
+    --train_file datasets/${dataset}_train.jsonl \
     --output_dir=${model_folder} --num_epochs=${epoch} --finetune_seed=${seed} --regular \
     --model_name=${base_model_name} --learning_rate=${learning_rate} --grad_accum=8
   python3 evaluate.py --model_name=${model_folder} \
-    --input_file=${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
+    --input_file=datasets/${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
     --original_model_name=${base_model_name} --nosplit_data \
     --spider_path=spider_data/database --max_new_tokens=-1 | tee -a output.txt
 }
@@ -48,13 +48,13 @@ run_jepa() {
 
   echo "Success Rate: jepa ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} lbd=${lbd} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
-    --train_file ${dataset}_train.jsonl \
+    --train_file datasets/${dataset}_train.jsonl \
     --output_dir=${model_folder} --num_epochs=${epoch} --finetune_seed=${seed} \
     --last_token=${last_token} --lbd=${lbd} --predictors=${predictors} \
     --model_name=${base_model_name} --learning_rate=${learning_rate} \
     --linear=random_span --grad_accum=8
   python3 evaluate.py --model_name=${model_folder} \
-    --input_file=${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
+    --input_file=datasets/${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
     --original_model_name=${base_model_name} --nosplit_data \
     --spider_path=spider_data/database --max_new_tokens=-1 | tee -a output.txt
 }
@@ -75,13 +75,13 @@ run_traj_reg() {
 
   echo "Success Rate: traj_reg ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} lbd=${lbd} lbd1=${lbd1} lbd2=${lbd2} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
-    --train_file ${dataset}_train.jsonl \
+    --train_file datasets/${dataset}_train.jsonl \
     --output_dir=${model_folder} --num_epochs=${epoch} --finetune_seed=${seed} \
     --last_token=${last_token} --lbd=${lbd} --predictors=${predictors} \
     --model_name=${base_model_name} --learning_rate=${learning_rate} \
     --linear=random_span --trajectory_reg --lbd1=${lbd1} --lbd2=${lbd2} --grad_accum=8
   python3 evaluate.py --model_name=${model_folder} \
-    --input_file=${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
+    --input_file=datasets/${dataset}_test.jsonl --output_file=eval.jsonl --split_tune_untune \
     --original_model_name=${base_model_name} --nosplit_data \
     --spider_path=spider_data/database --max_new_tokens=-1 | tee -a output.txt
 }
@@ -96,7 +96,7 @@ run_analysis() {
   python3 analyze_trajectory.py \
     --model_name=${model_folder} \
     --original_model_name=${base_model_name} \
-    --input_file=${dataset}_test.jsonl \
+    --input_file=datasets/${dataset}_test.jsonl \
     --max_examples=200 | tee -a output.txt
 }
 
