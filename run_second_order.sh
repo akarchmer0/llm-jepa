@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e  # abort immediately if any command fails
 # Experiment pipeline for second-order STP (parabolic degeneracy fix).
 #
 # Three model variants are run per (seed, lbd1, lbd2):
