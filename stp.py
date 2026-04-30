@@ -1617,7 +1617,6 @@ def main():
         save_total_limit=args.num_epochs * 4 if args.enable_save else None,
 
         # Logging
-        logging_dir=f"{args.output_dir}/logs",
         logging_steps=args.eval_steps,
         
         # Optimization - key changes for stability
@@ -1661,7 +1660,7 @@ def main():
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            tokenizer=tokenizer,
+            processing_class=tokenizer,
             data_collator=data_collator,
             callbacks=[flop_callback] if args.track_flop else [],
         )
@@ -1673,7 +1672,7 @@ def main():
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            tokenizer=tokenizer,
+            processing_class=tokenizer,
             data_collator=data_collator,
             callbacks=[flop_callback] if args.track_flop else [],
             lbd=args.lbd,
