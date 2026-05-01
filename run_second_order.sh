@@ -25,6 +25,10 @@ run_regular() {
   dataset=${8}
   model_folder=${9}
 
+  if [ -d "${model_folder}" ]; then
+    echo "SKIP regular ${model_folder} — already exists" | tee -a output.txt
+    return 0
+  fi
   echo "Success Rate: regular ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
     --train_file datasets/${dataset}_train.jsonl \
@@ -47,6 +51,10 @@ run_jepa() {
   dataset=${8}
   model_folder=${9}
 
+  if [ -d "${model_folder}" ]; then
+    echo "SKIP jepa ${model_folder} — already exists" | tee -a output.txt
+    return 0
+  fi
   echo "Success Rate: jepa ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} lbd=${lbd} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
     --train_file datasets/${dataset}_train.jsonl \
@@ -74,6 +82,10 @@ run_traj_reg() {
   lbd1=${10}
   lbd2=${11}
 
+  if [ -d "${model_folder}" ]; then
+    echo "SKIP traj_reg ${model_folder} — already exists" | tee -a output.txt
+    return 0
+  fi
   echo "Success Rate: traj_reg ${base_model_name} lr=${learning_rate} e=${epoch} lt=${last_token} p=${predictors} s=${seed} lbd=${lbd} lbd1=${lbd1} lbd2=${lbd2} dataset=${dataset}" >> output.txt
   torchrun --nproc_per_node=4 stp.py \
     --train_file datasets/${dataset}_train.jsonl \
