@@ -1357,6 +1357,11 @@ class RepresentationTrainer(Trainer):
             print(f"llm_loss: {lm_loss.float()}, jepa_loss: {jepa_loss.float()}, "
                   f"vel_loss: {first_order_loss.float()}, accel_loss: {second_order_loss.float()}")
 
+        # Normalize by gradient accumulation steps to match transformers v5 base Trainer behavior.
+        # Without this, the logged loss and gradients are grad_accum times too large.
+        if self.args.gradient_accumulation_steps > 1:
+            total_loss = total_loss / self.args.gradient_accumulation_steps
+
         return (total_loss, main_outputs) if return_outputs else total_loss
 
 
