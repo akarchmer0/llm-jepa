@@ -28,20 +28,31 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 def load_model_and_tokenizer(model_name, original_model_name=None):
     """Load model and tokenizer, using original_model_name for tokenizer if provided."""
+    from transformers import AutoConfig
     tokenizer_name = original_model_name if original_model_name else model_name
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
+    load_kwargs = dict(
+        dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
         low_cpu_mem_usage=True,
         use_cache=False,
     )
+    try:
+        model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+    except ValueError:
+        # Saved fine-tuned model may be missing model_type in config.json.
+        # Fall back to loading config from the original base model.
+        config = AutoConfig.from_pretrained(
+            original_model_name or model_name, trust_remote_code=True
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, config=config, **load_kwargs
+        )
     model.eval()
     return model, tokenizer
 
