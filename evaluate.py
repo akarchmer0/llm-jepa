@@ -669,14 +669,14 @@ def process_dataset(input_file, output_file, original_model_name, model, tokeniz
     print(len(sim_list))
     if sim_list:
         print(sum(sim_list) / len(sim_list), np.std(sim_list))
-    quantiles = np.quantile(sim_list, [0.1, 0.2, 0.5, 0.8, 0.9])
-    print(quantiles)
+        quantiles = np.quantile(sim_list, [0.1, 0.2, 0.5, 0.8, 0.9])
+        print(quantiles)
     if split_tune_untune:
         print(len(sim_list_untune))
         if sim_list_untune:
             print(sum(sim_list_untune) / len(sim_list_untune), np.std(sim_list_untune))
-        quantiles_fail = np.quantile(sim_list_untune, [0.1, 0.2, 0.5, 0.8, 0.9])
-        print(quantiles_fail)
+            quantiles_fail = np.quantile(sim_list_untune, [0.1, 0.2, 0.5, 0.8, 0.9])
+            print(quantiles_fail)
     return results
 
 
