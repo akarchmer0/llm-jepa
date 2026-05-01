@@ -534,8 +534,8 @@ def process_dataset(input_file, output_file, original_model_name, model, tokeniz
     
     print(f"Loaded {len(dataset)} examples from {input_file}")
     
-    # Limit examples if specified
-    if max_examples:
+    # Limit examples if specified (-1 or None means no cap)
+    if max_examples and max_examples > 0:
         dataset = dataset.select(range(min(max_examples, len(dataset))))
         print(f"Processing {len(dataset)} examples (limited by max_examples)")
     

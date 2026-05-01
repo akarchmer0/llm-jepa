@@ -1404,6 +1404,7 @@ def main():
     parser.add_argument("--grad_accum", type=int, default=4, help="Gradient accumulation steps")
     parser.add_argument("--learning_rate", type=float, default=2e-5, help="Learning rate")
     parser.add_argument("--num_epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--max_steps", type=int, default=-1, help="Max training steps (-1 = no cap, uses num_epochs)")
     parser.add_argument("--eval_steps", type=int, default=10, help="Evaluation steps")
     parser.add_argument("--lora", action="store_true", help="Enable LoRA (default: full fine-tuning)")
     parser.add_argument("--lora_rank", type=int, default=16, help="LoRA rank. Default: 16.")
@@ -1614,6 +1615,7 @@ def main():
         lr_scheduler_type="constant" if args.constant_lr else "linear",
         learning_rate=args.learning_rate,
         num_train_epochs=args.num_epochs,
+        max_steps=args.max_steps,
         
         # Evaluation
         eval_strategy="no",  # "steps" if eval_dataset else "no",
