@@ -711,6 +711,9 @@ class RepresentationTrainer(Trainer):
             assert self.random_span_times == 1, f"random_span_times ({self.random_span_times}) must = 1 when random_span_mask is {self.random_span_mask}."
         assert self.jepa_l2 + self.jepa_mse <= 1, "Only one of jepa_l2 and jepa_mse can be True."
         super().__init__(*args, **kwargs)
+        # transformers v5 renamed tokenizer → processing_class; keep self.tokenizer working
+        if not hasattr(self, 'tokenizer'):
+            self.tokenizer = self.processing_class
         rank = getattr(self.args, "process_index", 0)
         self._g = torch.Generator(device=self.args.device)
         self._g.manual_seed(self.args.seed + rank * 3)
