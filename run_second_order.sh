@@ -168,8 +168,8 @@ else
 fi
 
 # Hyperparameter grid for trajectory regularization (3 x 3 = 9 combinations)
-lbd1_values=(0.001 0.01 0.1)   # first-order: velocity consistency weight
-lbd2_values=(0.001 0.01 0.1)   # second-order: acceleration weight
+lbd1_values=(0.0001 0.003 0.007)   # first-order: velocity consistency weight
+lbd2_values=(0.0001 0.003 0.007)   # second-order: acceleration weight
 
 # ---------------------------------------------------------------------------
 # Main experiment loop
