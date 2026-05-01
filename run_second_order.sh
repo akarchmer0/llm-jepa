@@ -147,12 +147,12 @@ done
 # Experiment configuration
 # ---------------------------------------------------------------------------
 
-model_name=Qwen/Qwen3-1.7B
+model_name=meta-llama/Llama-3.2-1B-Instruct
 dataset=synth
 lbd=0.02        # STP (random_span) loss weight — same as run_stp.sh
 predictors=0
 learning_rate=2e-5
-last_token=-3
+last_token=-2
 
 if [ "$DEBUG" = "1" ]; then
   epochs=1          # 1 epoch but with max_steps to cap at 1/4 epoch
