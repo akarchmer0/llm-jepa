@@ -1098,6 +1098,7 @@ class RepresentationTrainer(Trainer):
 
         For a perfectly linear constant-speed trajectory, this is 0.
         Requires at least 2 tokens (1 velocity vector).
+        Normalized by hidden dim D so loss scale is independent of model size.
         """
         length = end_exclusive - start
         if length >= 2:
@@ -1105,7 +1106,8 @@ class RepresentationTrainer(Trainer):
             velocities = span[1:] - span[:-1]                    # (L-1, D)
             mean_velocity = velocities.mean(dim=0, keepdim=True) # (1, D)
             deviations = velocities - mean_velocity               # (L-1, D)
-            return torch.sum(deviations ** 2), deviations.shape[0]
+            D = hidden_states.shape[-1]
+            return torch.sum(deviations ** 2) / D, deviations.shape[0]
         return torch.tensor(0.0, device=hidden_states.device), 0
 
     def get_acceleration_loss(self, hidden_states, start, end_exclusive):
@@ -1113,12 +1115,14 @@ class RepresentationTrainer(Trainer):
 
         For a constant-velocity trajectory, this is 0.
         Requires at least 3 tokens (1 acceleration vector).
+        Normalized by hidden dim D so loss scale is independent of model size.
         """
         length = end_exclusive - start
         if length >= 3:
             span = hidden_states[start:end_exclusive]        # (L, D)
             accel = span[2:] - 2 * span[1:-1] + span[:-2]   # (L-2, D)
-            return torch.sum(accel ** 2), accel.shape[0]
+            D = hidden_states.shape[-1]
+            return torch.sum(accel ** 2) / D, accel.shape[0]
         return torch.tensor(0.0, device=hidden_states.device), 0
 
     def get_weights(self, full_length: int, patch_length: int):
