@@ -294,9 +294,13 @@ def format_conversation(messages, tokenizer, include_assistant=False, plain=Fals
         else:
             formatted_text = messages[1]["content"] + "<|perception|>"
     else:
-        formatted_text = tokenizer.apply_chat_template(messages, tokenize=False,
-                                                       add_generation_prompt=True,
-                                                       enable_thinking=False)
+        try:
+            formatted_text = tokenizer.apply_chat_template(messages, tokenize=False,
+                                                           add_generation_prompt=True,
+                                                           enable_thinking=False)
+        except TypeError:
+            formatted_text = tokenizer.apply_chat_template(messages, tokenize=False,
+                                                           add_generation_prompt=True)
 
     return formatted_text
 
